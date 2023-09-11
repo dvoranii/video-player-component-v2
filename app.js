@@ -15,13 +15,17 @@ class VideoPlayer extends HTMLElement {
     }
   }
 
-  updatePlaybackBtn() {
+  updatePauseState() {
     if (this.video.paused || this.video.ended) {
       this.playbackBtnsImg[0].classList.remove("hidden");
       this.playbackBtnsImg[1].classList.add("hidden");
+      this.playBtnOverlayIcon.classList.remove("hidden");
+      this.pauseOverlay.classList.remove("hidden");
     } else {
       this.playbackBtnsImg[0].classList.add("hidden");
       this.playbackBtnsImg[1].classList.remove("hidden");
+      this.playBtnOverlayIcon.classList.add("hidden");
+      this.pauseOverlay.classList.add("hidden");
     }
   }
 
@@ -131,6 +135,22 @@ class VideoPlayer extends HTMLElement {
     });
   }
 
+  async togglePiP() {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else {
+        if (this.video.requestPictureInPicture) {
+          await this.video.requestPictureInPicture();
+        } else {
+          console.log("PiP not supported");
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   toggleFullScreen() {
     if (document.fullscreenElement) {
       document.exitFullscreen();
@@ -158,6 +178,9 @@ class VideoPlayer extends HTMLElement {
 
   initializeReferences() {
     this.video = this.shadowRoot.querySelector("video");
+    this.playBtnOverlayIcon = this.shadowRoot.querySelector(
+      ".play--btn__wrapper img"
+    );
     this.videoControls = this.shadowRoot.querySelector(".video-controls");
     this.playbackBtn = this.shadowRoot.querySelector(".playback-btn");
     this.playbackBtnsImg =
@@ -185,6 +208,11 @@ class VideoPlayer extends HTMLElement {
     this.pip = this.shadowRoot.querySelector(".pip-btn");
     this.rewindBtn = this.shadowRoot.querySelector(".rewind--btn");
 
+    this.pauseOverlay = this.shadowRoot.querySelector(".play--btn__overlay");
+    this.overlayPlaybtn = this.shadowRoot.querySelector(
+      ".play--btn__wrapper img"
+    );
+
     // video works
     const videoWorks = !!document.createElement("video").canPlayType;
 
@@ -196,7 +224,7 @@ class VideoPlayer extends HTMLElement {
     }
 
     this.video.addEventListener("ended", () => {
-      this.updatePlaybackBtn();
+      this.updatePauseState();
       this.resetProgressBar();
     });
   }
@@ -214,7 +242,7 @@ class VideoPlayer extends HTMLElement {
   setupEventListeners() {
     this.boundPlaybackHandler = () => {
       this.togglePlay();
-      this.updatePlaybackBtn();
+      this.updatePauseState();
     };
 
     this.boundVolumeHandler = () => {
@@ -248,9 +276,18 @@ class VideoPlayer extends HTMLElement {
       this.rewindTenSeconds();
     };
 
+    this.boundTogglePiPHandler = () => {
+      this.togglePiP();
+    };
+
     this.video.addEventListener("loadedmetadata", this.initializeVideo);
+    // playback
     this.playbackBtn.addEventListener("click", this.boundPlaybackHandler);
+    this.pauseOverlay.addEventListener("click", this.boundPlaybackHandler);
     this.video.addEventListener("click", this.boundPlaybackHandler);
+    this.overlayPlaybtn.addEventListener("click", this.boundPlaybackHandler);
+
+    // volume
     this.volumeInput.addEventListener("change", this.boundVolumeHandler);
     this.volumeBtn.addEventListener("click", this.boundMuteHandler);
     this.video.addEventListener("timeupdate", this.boundTimeUpdateHandler);
@@ -258,6 +295,9 @@ class VideoPlayer extends HTMLElement {
     this.seek.addEventListener("input", this.boundSkipAheadHandler);
     this.seek.addEventListener("mousemove", this.boundUpdateSeekTooltip);
     this.rewindBtn.addEventListener("click", this.boundRewindTenSecondsHandler);
+
+    // PiP
+    this.pip.addEventListener("click", this.boundTogglePiPHandler);
   }
 
   //   to prevent memory leaks
@@ -274,6 +314,7 @@ class VideoPlayer extends HTMLElement {
         .video-player {
           border: 1px solid grey;
           width: clamp(600px, 50vw, 1200px);
+          position: relative;
         }
 
         .video-player video {
@@ -345,6 +386,7 @@ class VideoPlayer extends HTMLElement {
           display: flex;
           align-items: center;
         }
+
         .video-controls.fullScreenActive {
           right: 0;
           left: 0;
@@ -352,6 +394,10 @@ class VideoPlayer extends HTMLElement {
           padding: 10px;
           position: absolute;
           background: white;
+        }
+
+        .video-controls {
+          height: 10%;
         }
 
         .settings-btn,
@@ -394,8 +440,35 @@ class VideoPlayer extends HTMLElement {
         .pip-btn img {
           width: 55px;
         }
+
+        .play--btn__wrapper {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 32;
+        }
+
+        .play--btn__wrapper img {
+          width: 150px;
+          z-index: 33;
+        }
+
+        .play--btn__overlay {
+          width: 100%;
+          height: 87%;
+          background-color: black;
+          position: absolute;
+          opacity: 0.5;
+          z-index: 5;
+        }
       </style>
       <div class="video-player">
+        <div class="play--btn__overlay hidden"></div>
+        <div class="play--btn__wrapper">
+          <img src="./assets/play-btn.svg" class="hidden" />
+        </div>
+
         <video poster="${this.getAttribute("data-poster")}" preload="metadata">
           <source src="${this.getAttribute("data-video")}" type="video/mp4" />
         </video>
