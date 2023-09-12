@@ -151,6 +151,29 @@ class VideoPlayer extends HTMLElement {
     }
   }
 
+  updateSettingsUI(e) {
+    this.listMainWrapper.classList.remove("inView");
+    this.listSecondaryWrapper.classList.remove("inView", "outOfView");
+    this.listTertiaryWrapper.classList.remove("inView", "outOfView");
+    this.listMainWrapper.classList.add("outOfView");
+
+    if (e.target === this.settingsPlaybackBtn) {
+      this.listSecondaryWrapper.classList.add("inView");
+    } else if (e.target === this.settingsQualityBtn) {
+      this.listTertiaryWrapper.classList.add("inView");
+    }
+  }
+
+  handleBackButtonClick() {
+    this.listMainWrapper.classList.remove("outOfView");
+    this.listSecondaryWrapper.classList.remove("inView");
+    this.listTertiaryWrapper.classList.remove("inView");
+
+    this.listMainWrapper.classList.add("inView");
+    this.listSecondaryWrapper.classList.add("outOfView");
+    this.listTertiaryWrapper.classList.add("outOfView");
+  }
+
   toggleFullScreen() {
     if (document.fullscreenElement) {
       document.exitFullscreen();
@@ -212,6 +235,24 @@ class VideoPlayer extends HTMLElement {
     this.overlayPlaybtn = this.shadowRoot.querySelector(
       ".play--btn__wrapper img"
     );
+
+    this.settingsPlaybackBtn =
+      this.shadowRoot.querySelector(".btn--playbackRate");
+
+    this.listMainWrapper = this.shadowRoot.querySelector(
+      ".list--main__wrapper"
+    );
+
+    this.listSecondaryWrapper = this.shadowRoot.querySelector(
+      ".list--secondary__wrapper"
+    );
+    this.listTertiaryWrapper = this.shadowRoot.querySelector(
+      ".list--tertiary__wrapper"
+    );
+
+    this.settingsQualityBtn = this.shadowRoot.querySelector(".btn--quality");
+
+    this.listBackBtns = this.shadowRoot.querySelectorAll(".list--backBtn");
 
     // video works
     const videoWorks = !!document.createElement("video").canPlayType;
@@ -280,6 +321,14 @@ class VideoPlayer extends HTMLElement {
       this.togglePiP();
     };
 
+    this.boundUpdateSettingsUIHandler = (e) => {
+      this.updateSettingsUI(e);
+    };
+
+    this.boundHandleBackBtn = () => {
+      this.handleBackButtonClick();
+    };
+
     this.video.addEventListener("loadedmetadata", this.initializeVideo);
     // playback
     this.playbackBtn.addEventListener("click", this.boundPlaybackHandler);
@@ -298,15 +347,39 @@ class VideoPlayer extends HTMLElement {
 
     // PiP
     this.pip.addEventListener("click", this.boundTogglePiPHandler);
+
+    this.settingsPlaybackBtn.addEventListener(
+      "click",
+      this.boundUpdateSettingsUIHandler
+    );
+    this.settingsQualityBtn.addEventListener(
+      "click",
+      this.boundUpdateSettingsUIHandler
+    );
+
+    this.listBackBtns.forEach((btn) => {
+      btn.addEventListener("click", this.boundHandleBackBtn);
+    });
   }
 
   //   to prevent memory leaks
   disconnectedCallback() {
-    this.video.removeEventListener("loadeddata", this.initializeVideo);
-    this.video.removeEventListener("timeupdate", this.boundTimeUpdateHandler);
+    this.video.removeEventListener("loadedmetadata", this.initializeVideo);
     this.playbackBtn.removeEventListener("click", this.boundPlaybackHandler);
-    this.volumeInput.removeEventListener("click", this.boundVolumeHandler);
+    this.pauseOverlay.removeEventListener("click", this.boundPlaybackHandler);
+    this.video.removeEventListener("click", this.boundPlaybackHandler);
+    this.overlayPlaybtn.removeEventListener("click", this.boundPlaybackHandler);
+    this.volumeInput.removeEventListener("change", this.boundVolumeHandler);
     this.volumeBtn.removeEventListener("click", this.boundMuteHandler);
+    this.video.removeEventListener("timeupdate", this.boundTimeUpdateHandler);
+    this.fullScreenBtn.addEventListener("click", this.boundFullScreenHandler);
+    this.seek.removeEventListener("input", this.boundSkipAheadHandler);
+    this.seek.removeEventListener("mousemove", this.boundUpdateSeekTooltip);
+    this.rewindBtn.removeEventListener(
+      "click",
+      this.boundRewindTenSecondsHandler
+    );
+    this.pip.removeEventListener("click", this.boundTogglePiPHandler);
   }
 
   render() {
@@ -462,6 +535,117 @@ class VideoPlayer extends HTMLElement {
           opacity: 0.5;
           z-index: 5;
         }
+
+        .settings--menu {
+          position: absolute;
+          width: 140px;
+
+          height: 88px;
+          border: 1px solid black;
+          background: white;
+          bottom: 100px;
+          right: 20px;
+        }
+
+        .list--secondary,
+        .list--main,
+        .list--tertiary {
+          padding-inline-start: 0;
+          list-style: none;
+        }
+
+        .settings--menu__inner {
+          position: relative;
+          height: 88px;
+        }
+
+        .list--main__wrapper,
+        .list--secondary__wrapper,
+        .list--tertiary__wrapper {
+          position: absolute;
+          width: 120px;
+          padding: 10px;
+        }
+        .list--main__wrapper {
+          background: grey;
+        }
+        .list--secondary__wrapper,
+        .list--tertiary__wrapper {
+          margin-left: 140px;
+        }
+
+        .list--secondary__wrapper {
+          background: red;
+          /* display: none; */
+        }
+        .list--tertiary__wrapper {
+          background: orange;
+        }
+
+        .list--btnWrapper {
+          width: 100%;
+          display: flex;
+          justify-content: flex-end;
+          position: absolute;
+          right: 10px;
+          top: 10px;
+        }
+        .list--backBtn {
+          border: none;
+          background: transparent;
+          color: white;
+          font-size: 18px;
+          font-weight: bold;
+        }
+
+        .list--backBtn:hover {
+          color: grey;
+          cursor: pointer;
+        }
+
+        @keyframes slideSettingsLeft {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(-140px);
+          }
+        }
+        @keyframes slideSettingsRight {
+          from {
+            transform: translateX(-140px);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+
+        .btn--playbackRate {
+          border: none;
+        }
+
+        .list--main__wrapper.outOfView,
+        .list--secondary__wrapper.inView,
+        .list--tertiary__wrapper.inView {
+          animation: slideSettingsLeft 0.5s ease;
+          animation-fill-mode: forwards;
+        }
+
+        .list--main__wrapper.inView,
+        .list--secondary__wrapper.outOfView,
+        .list--tertiary__wrapper.outOfView {
+          animation: slideSettingsRight 0.5s ease;
+          animation-fill-mode: forwards;
+        }
+
+        @keyframes slideSettingsRight {
+          from {
+            transform: translateX(-140px);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
       </style>
       <div class="video-player">
         <div class="play--btn__overlay hidden"></div>
@@ -525,12 +709,47 @@ class VideoPlayer extends HTMLElement {
                   <span> / </span>
                   <time class="duration">00:00</time>
                 </div>
-
+              </div>
+              <div class="bottom-controls--right">
                 <!-- Settings button -->
                 <div class="settings">
                   <button data-title="Settings (s)" class="settings-btn">
                     <img src="./assets/settings.svg" />
                   </button>
+
+                  <div class="settings--menu">
+                    <div class="settings--menu__inner">
+                      <div class="list--main__wrapper">
+                        <ul class="list--main">
+                          <button class="btn--playbackRate">
+                            Playback rate
+                          </button>
+                          <button class="btn--quality">Quality</button>
+                        </ul>
+                      </div>
+
+                      <div class="list--secondary__wrapper">
+                        <div class="list--btnWrapper">
+                          <button class="list--backBtn">&lt;</button>
+                        </div>
+
+                        <ul class="list--secondary">
+                          <li><button>Option 1</button></li>
+                          <li><button>Option 2</button></li>
+                        </ul>
+                      </div>
+
+                      <div class="list--tertiary__wrapper">
+                        <div class="list--btnWrapper">
+                          <button class="list--backBtn">&lt;</button>
+                        </div>
+                        <ul class="list--tertiary">
+                          <li><button>Option 1</button></li>
+                          <li><button>Option 2</button></li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="rewind--btn__wrapper">
@@ -538,8 +757,6 @@ class VideoPlayer extends HTMLElement {
                     <img src="./assets/rewind-10.svg" />
                   </button>
                 </div>
-              </div>
-              <div class="bottom-controls--right">
                 <button data-title="PIP (p)" class="pip-btn">
                   <img src="./assets/pip.svg" alt="" />
                 </button>
