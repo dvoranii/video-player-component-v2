@@ -151,6 +151,18 @@ class VideoPlayer extends HTMLElement {
     }
   }
 
+  toggleShowSettings() {
+    if (this.settingsMenu.classList.contains("openMenu")) {
+      this.settingsMenu.classList.remove("openMenu");
+    } else {
+      this.settingsMenu.classList.add("openMenu");
+    }
+  }
+
+  // bindHotkeys(e) {
+  //   console.log(e.code);
+  // }
+
   updateSettingsUI(e) {
     this.listMainWrapper.classList.remove("inView");
     this.listSecondaryWrapper.classList.remove("inView", "outOfView");
@@ -159,11 +171,27 @@ class VideoPlayer extends HTMLElement {
 
     if (e.target === this.settingsPlaybackBtn) {
       this.listSecondaryWrapper.classList.add("inView");
+      //   temporary
+      this.settingsMenu.style.height = "170px";
     } else if (e.target === this.settingsQualityBtn) {
       this.listTertiaryWrapper.classList.add("inView");
     }
   }
 
+  updatePlaybackRate(e) {
+    const rate = parseFloat(e.target.getAttribute("data-rate"));
+    if (!isNaN(rate)) {
+      this.video.playbackRate = rate;
+      if (this.video.playbackRate === 1) {
+        this.playbackRateLabel.textContent = `Normal`;
+      } else {
+        this.playbackRateLabel.textContent = `${rate}x`;
+      }
+    } else {
+      console.log(`Invalid playback rate: ${rate}`);
+    }
+  }
+  //might need to even toggle z-index of lists for when
   handleBackButtonClick() {
     this.listMainWrapper.classList.remove("outOfView");
     this.listSecondaryWrapper.classList.remove("inView");
@@ -172,15 +200,15 @@ class VideoPlayer extends HTMLElement {
     this.listMainWrapper.classList.add("inView");
     this.listSecondaryWrapper.classList.add("outOfView");
     this.listTertiaryWrapper.classList.add("outOfView");
+    // temporary
+    this.settingsMenu.style.height = "91px";
   }
 
   toggleFullScreen() {
     if (document.fullscreenElement) {
       document.exitFullscreen();
-      this.videoControls.classList.remove("fullScreenActive");
     } else {
       this.videoContainer.requestFullscreen();
-      this.videoControls.classList.add("fullScreenActive");
     }
   }
 
@@ -236,6 +264,11 @@ class VideoPlayer extends HTMLElement {
       ".play--btn__wrapper img"
     );
 
+    // settings
+
+    this.settingsMenu = this.shadowRoot.querySelector(".settings--menu");
+    this.settingsBtn = this.shadowRoot.querySelector(".settings-btn");
+
     this.settingsPlaybackBtn =
       this.shadowRoot.querySelector(".btn--playbackRate");
 
@@ -253,6 +286,10 @@ class VideoPlayer extends HTMLElement {
     this.settingsQualityBtn = this.shadowRoot.querySelector(".btn--quality");
 
     this.listBackBtns = this.shadowRoot.querySelectorAll(".list--backBtn");
+
+    this.playbackRateButtons = this.shadowRoot.querySelectorAll("[data-rate]");
+    this.playbackRateLabel =
+      this.shadowRoot.querySelector("#playbackRateLabel");
 
     // video works
     const videoWorks = !!document.createElement("video").canPlayType;
@@ -301,7 +338,6 @@ class VideoPlayer extends HTMLElement {
     };
 
     this.boundFullScreenHandler = () => {
-      this.toggleFullScreenBtn();
       this.toggleFullScreen();
     };
 
@@ -328,6 +364,34 @@ class VideoPlayer extends HTMLElement {
     this.boundHandleBackBtn = () => {
       this.handleBackButtonClick();
     };
+
+    this.boundPlaybackRateHandler = (e) => {
+      this.updatePlaybackRate(e);
+    };
+
+    this.boundToggleShowSettings = () => {
+      this.toggleShowSettings();
+    };
+
+    window.addEventListener("keydown", (e) => {
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          this.togglePlay();
+          this.updatePauseState();
+          break;
+        case "KeyM":
+          this.toggleMute();
+          break;
+        case "Escape":
+          e.preventDefault();
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+            this.videoControls.style.height = "15%";
+            this.pauseOverlay.style.height = "86%";
+          }
+      }
+    });
 
     this.video.addEventListener("loadedmetadata", this.initializeVideo);
     // playback
@@ -360,6 +424,27 @@ class VideoPlayer extends HTMLElement {
     this.listBackBtns.forEach((btn) => {
       btn.addEventListener("click", this.boundHandleBackBtn);
     });
+
+    this.playbackRateButtons.forEach((btn) => {
+      btn.addEventListener("click", this.boundPlaybackRateHandler);
+    });
+
+    this.settingsBtn.addEventListener("click", this.boundToggleShowSettings);
+
+    // override default behaviour
+    document.addEventListener("fullscreenchange", () => {
+      // console.log(e);
+      this.toggleFullScreenBtn();
+      if (document.fullscreenElement) {
+        this.videoControls.classList.add("fullScreenActive");
+        this.videoControls.style.height = "7%";
+        this.pauseOverlay.style.height = "91%";
+      } else {
+        this.videoControls.classList.remove("fullScreenActive");
+        this.videoControls.style.height = "15%";
+        this.pauseOverlay.style.height = "87%";
+      }
+    });
   }
 
   //   to prevent memory leaks
@@ -388,6 +473,7 @@ class VideoPlayer extends HTMLElement {
           border: 1px solid grey;
           width: clamp(600px, 50vw, 1200px);
           position: relative;
+          aspect-ratio: 16 / 9;
         }
 
         .video-player video {
@@ -470,7 +556,7 @@ class VideoPlayer extends HTMLElement {
         }
 
         .video-controls {
-          height: 10%;
+          height: 15%;
         }
 
         .settings-btn,
@@ -539,12 +625,19 @@ class VideoPlayer extends HTMLElement {
         .settings--menu {
           position: absolute;
           width: 140px;
-
+          overflow: hidden;
           height: 88px;
           border: 1px solid black;
           background: white;
           bottom: 100px;
           right: 20px;
+          transition: all 150ms ease;
+          z-index: 99;
+          opacity: 0;
+        }
+
+        .settings--menu.openMenu {
+          animation: fadeInSlideDown 150ms ease forwards;
         }
 
         .list--secondary,
@@ -603,6 +696,35 @@ class VideoPlayer extends HTMLElement {
           cursor: pointer;
         }
 
+        .btn--playbackRate {
+          border: none;
+          font-size: 12px;
+        }
+
+        #playbackRateLabel {
+          font-size: 12px;
+          margin-left: 8px;
+        }
+
+        .list--main__wrapper.outOfView,
+        .list--secondary__wrapper.inView,
+        .list--tertiary__wrapper.inView {
+          animation: slideSettingsLeft 0.25s ease;
+          animation-fill-mode: forwards;
+        }
+
+        .list--main__wrapper.inView,
+        .list--secondary__wrapper.outOfView,
+        .list--tertiary__wrapper.outOfView {
+          animation: slideSettingsRight 0.25s ease;
+          animation-fill-mode: forwards;
+        }
+        .playbackRate--wrapper {
+          display: flex;
+        }
+
+        /* ANIMATIONS */
+
         @keyframes slideSettingsLeft {
           from {
             transform: translateX(0);
@@ -620,30 +742,27 @@ class VideoPlayer extends HTMLElement {
           }
         }
 
-        .btn--playbackRate {
-          border: none;
-        }
-
-        .list--main__wrapper.outOfView,
-        .list--secondary__wrapper.inView,
-        .list--tertiary__wrapper.inView {
-          animation: slideSettingsLeft 0.5s ease;
-          animation-fill-mode: forwards;
-        }
-
-        .list--main__wrapper.inView,
-        .list--secondary__wrapper.outOfView,
-        .list--tertiary__wrapper.outOfView {
-          animation: slideSettingsRight 0.5s ease;
-          animation-fill-mode: forwards;
-        }
-
         @keyframes slideSettingsRight {
           from {
             transform: translateX(-140px);
           }
           to {
             transform: translateX(0);
+          }
+        }
+
+        @keyframes fadeInSlideDown {
+          from {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: all;
+            transform: translateY(0px);
           }
         }
       </style>
@@ -721,9 +840,19 @@ class VideoPlayer extends HTMLElement {
                     <div class="settings--menu__inner">
                       <div class="list--main__wrapper">
                         <ul class="list--main">
-                          <button class="btn--playbackRate">
-                            Playback rate
-                          </button>
+                          <div class="playbackRate--wrapper">
+                            <button
+                              name="playbackRate--btn"
+                              class="btn--playbackRate"
+                            >
+                              Playback rate
+                            </button>
+                            <label
+                              for="playbackRate--btn"
+                              id="playbackRateLabel"
+                              >Normal</label
+                            >
+                          </div>
                           <button class="btn--quality">Quality</button>
                         </ul>
                       </div>
@@ -734,8 +863,12 @@ class VideoPlayer extends HTMLElement {
                         </div>
 
                         <ul class="list--secondary">
-                          <li><button>Option 1</button></li>
-                          <li><button>Option 2</button></li>
+                          <li><button data-rate="2">2</button></li>
+                          <li><button data-rate="1.75">1.75</button></li>
+                          <li><button data-rate="1.5">1.5</button></li>
+                          <li><button data-rate="1">Normal</button></li>
+                          <li><button data-rate="0.75">0.75</button></li>
+                          <li><button data-rate="0.5">0.5</button></li>
                         </ul>
                       </div>
 
@@ -745,6 +878,7 @@ class VideoPlayer extends HTMLElement {
                         </div>
                         <ul class="list--tertiary">
                           <li><button>Option 1</button></li>
+                          <li><button>Option 2</button></li>
                           <li><button>Option 2</button></li>
                         </ul>
                       </div>
