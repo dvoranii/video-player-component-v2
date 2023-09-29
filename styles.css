@@ -16,5 +16,11 @@ html {
   align-items: center;
   justify-content: center;
   margin: 0 auto;
-  max-width: 1200px;
+  width: 90%;
+}
+
+@media screen and (max-width: 668px) {
+  .video-player {
+    transform: scale(0.8);
+  }
 }

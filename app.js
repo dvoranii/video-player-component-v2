@@ -447,7 +447,7 @@ export default class VideoPlayer extends HTMLElement {
           if (document.fullscreenElement) {
             document.exitFullscreen();
             this.videoControls.style.height = "15%";
-            this.pauseOverlay.style.height = "86%";
+            this.pauseOverlay.style.height = "87.9%";
           }
       }
     });
@@ -508,7 +508,7 @@ export default class VideoPlayer extends HTMLElement {
       } else {
         this.videoControls.classList.remove("fullScreenActive");
         this.videoControls.style.height = "15%";
-        this.pauseOverlay.style.height = "86.4%";
+        this.pauseOverlay.style.height = "87.9%";
       }
     });
   }
