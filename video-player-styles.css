@@ -1,0 +1,387 @@
+.video-player {
+  border: 1px solid grey;
+  width: clamp(600px, 50vw, 1200px);
+  position: relative;
+  aspect-ratio: 16 / 9;
+}
+
+.video-player video {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+.hidden {
+  display: none;
+}
+
+.bottom-controls--wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.bottom-controls--left,
+.bottom-controls--right {
+  display: flex;
+  align-items: center;
+}
+
+.volume--btn img {
+  max-width: 50px;
+}
+
+.video-progress {
+  position: relative;
+}
+
+progress {
+  appearance: none;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.seek {
+  width: 98%;
+  padding-left: 10px;
+  cursor: pointer;
+  height: 8.6px;
+}
+
+.seek-tooltip {
+  display: none;
+  position: absolute;
+  top: -30px;
+  left: 15px;
+  margin-left: -20px;
+  font-size: 12px;
+  padding: 3px;
+  content: attr(data-title);
+  font-weight: bold;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.time {
+  padding: 0px 20px;
+}
+
+.seek:hover + .seek-tooltip {
+  display: block;
+}
+
+.volume--controls {
+  display: flex;
+  align-items: center;
+}
+
+.video-controls.fullScreenActive {
+  right: 0;
+  left: 0;
+  bottom: 0;
+  padding: 10px;
+  position: absolute;
+  background: white;
+}
+
+.video-controls {
+  height: 15%;
+}
+
+.settings-btn,
+.pip-btn,
+.fullscreen-btn,
+.playback-btn,
+.volume--btn,
+.rewind--btn {
+  cursor: pointer;
+  position: relative;
+  margin-right: 7px;
+  border: none;
+  outline: none;
+  background-color: transparent;
+}
+
+.settings-btn img {
+  width: 50px;
+}
+
+.volume--btn img {
+  width: 40px;
+}
+
+.play,
+.rewind--btn img {
+  width: 50px;
+}
+
+.pause {
+  width: 30px;
+  padding: 10px;
+}
+
+.fullscreen,
+.fullscreen-exit {
+  width: 40px;
+}
+
+.pip-btn img {
+  width: 55px;
+}
+
+.play--btn__wrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 32;
+}
+
+.play--btn__wrapper img {
+  width: 150px;
+  z-index: 33;
+}
+
+.play--btn__overlay {
+  width: 100%;
+  height: 86.4%;
+  background-color: black;
+  position: absolute;
+  opacity: 0.5;
+  z-index: 5;
+}
+
+.settings--menu {
+  position: absolute;
+  width: 160px;
+  overflow: hidden;
+  height: 86px;
+  border: 1px solid #222;
+  background: white;
+  bottom: 100px;
+  right: 20px;
+  transition: all 150ms ease;
+  z-index: 99;
+  opacity: 0;
+  border-radius: 5px;
+  background: grey;
+}
+
+.settings--menu.openMenu {
+  animation: fadeInSlideDown 150ms ease forwards;
+}
+
+.list--secondary,
+.list--main,
+.list--tertiary {
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.list--main {
+  margin-top: 16px;
+}
+
+.settings--menu__inner {
+  position: relative;
+  height: 88px;
+}
+
+.list--main__wrapper,
+.list--secondary__wrapper,
+.list--tertiary__wrapper {
+  position: absolute;
+  width: 140px;
+  padding: 10px;
+}
+.list--main__wrapper {
+  background: grey;
+  z-index: 9;
+}
+
+.list--tertiary__wrapper {
+  margin-left: 160px;
+  background: grey;
+}
+
+.list--secondary__wrapper {
+  background: grey;
+  margin-left: 160px;
+}
+
+.list--btnWrapper {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+}
+.list--backBtn {
+  border: none;
+  background: transparent;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  transition: all 150ms ease;
+}
+
+.list--backBtn:hover {
+  color: black;
+  cursor: pointer;
+}
+
+.btn--playbackRate,
+.btn--quality {
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+#playbackRateLabel,
+#qualityLabel {
+  font-size: 12px;
+  margin-left: 8px;
+  color: #fff;
+}
+
+.list--main__wrapper.outOfView,
+.list--secondary__wrapper.inView,
+.list--tertiary__wrapper.inView {
+  animation: slideSettingsLeft 0.25s ease;
+  animation-fill-mode: forwards;
+}
+
+.list--main__wrapper.inView,
+.list--secondary__wrapper.outOfView,
+.list--tertiary__wrapper.outOfView {
+  animation: slideSettingsRight 0.25s ease;
+  animation-fill-mode: forwards;
+}
+.playbackRate--wrapper,
+.quality--wrapper {
+  display: flex;
+  justify-content: space-between;
+}
+
+.playbackRate--wrapper {
+  border-bottom: 1px solid #eee;
+}
+
+.quality--wrapper {
+  margin-top: 8px;
+}
+
+.list--secondary button {
+  background: none;
+  border: none;
+  color: white;
+  transition: all 150ms ease;
+}
+
+.list--secondary button:hover {
+  cursor: pointer;
+  background: #333;
+}
+
+.list--secondary button.active {
+  background: #333;
+}
+
+.list--secondary li {
+  border-bottom: 1px solid #222;
+  line-height: 1.25;
+}
+
+.list--secondary li:last-child {
+  border-bottom: none;
+}
+
+.list--tertiary li:first-child {
+  border-bottom: 1px solid black;
+}
+
+.list--tertiary li {
+  line-height: 1.5;
+}
+
+.list--tertiary button {
+  background: none;
+  border: none;
+  color: white;
+  transition: all 150ms ease;
+}
+
+.list--tertiary button:hover {
+  cursor: pointer;
+  background: #333;
+}
+
+.list--tertiary button.active {
+  background: #333;
+}
+
+.settings-close--btn {
+  position: absolute;
+  z-index: 99;
+  right: 0;
+  background: none;
+  color: white;
+  border: none;
+  transition: all 150ms ease;
+  margin-top: -8px;
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.settings-close--btn:hover {
+  cursor: pointer;
+  color: black;
+}
+
+/* ANIMATIONS */
+
+@keyframes slideSettingsLeft {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-160px);
+  }
+}
+@keyframes slideSettingsRight {
+  from {
+    transform: translateX(-140px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideSettingsRight {
+  from {
+    transform: translateX(-140px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInSlideDown {
+  from {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: all;
+    transform: translateY(0px);
+  }
+}

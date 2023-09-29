@@ -1,0 +1,19 @@
+{
+  "name": "video-player-web-component-lit-html",
+  "version": "1.0.0",
+  "description": "custom video player component",
+  "main": "app.js",
+  "scripts": {
+    "build": "rollup -c"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dvoranii/video-player-component-v2.git"
+  },
+  "author": "Ildi Dvorani",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dvoranii/video-player-component-v2/issues"
+  },
+  "homepage": "https://github.com/dvoranii/video-player-component-v2#readme"
+}

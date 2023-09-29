@@ -1,6 +1,6 @@
 import { html, render } from "https://cdn.skypack.dev/lit-html";
 
-class VideoPlayer extends HTMLElement {
+export default class VideoPlayer extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -159,10 +159,6 @@ class VideoPlayer extends HTMLElement {
     }
   }
 
-  // bindHotkeys(e) {
-  //   console.log(e.code);
-  // }
-
   updateSettingsUI(e) {
     this.listMainWrapper.classList.remove("inView");
     this.listSecondaryWrapper.classList.remove("inView", "outOfView");
@@ -172,7 +168,7 @@ class VideoPlayer extends HTMLElement {
     if (e.target === this.settingsPlaybackBtn) {
       this.listSecondaryWrapper.classList.add("inView");
       //   temporary
-      this.settingsMenu.style.height = "170px";
+      this.settingsMenu.style.height = "160px";
     } else if (e.target === this.settingsQualityBtn) {
       this.listTertiaryWrapper.classList.add("inView");
     }
@@ -180,6 +176,12 @@ class VideoPlayer extends HTMLElement {
 
   updatePlaybackRate(e) {
     const rate = parseFloat(e.target.getAttribute("data-rate"));
+
+    this.playbackRateButtons.forEach((button) => {
+      button.classList.remove("active");
+    });
+
+    e.target.classList.add("active");
     if (!isNaN(rate)) {
       this.video.playbackRate = rate;
       if (this.video.playbackRate === 1) {
@@ -189,6 +191,34 @@ class VideoPlayer extends HTMLElement {
       }
     } else {
       console.log(`Invalid playback rate: ${rate}`);
+    }
+  }
+
+  updateResolution(e) {
+    const res = e.target.getAttribute("data-res");
+
+    if (res == 720) {
+      this.qualityLabel.textContent = "720p";
+    } else if (res == 360) {
+      this.qualityLabel.textContent = "360p";
+    }
+
+    this.videoResolutionBtns.forEach((button) => {
+      button.classList.remove("active");
+    });
+
+    e.target.classList.add("active");
+
+    let newSrc = this.getAttribute(`data-video-${res}`);
+    if (newSrc) {
+      let currentTime = this.video.currentTime;
+
+      this.source.setAttribute("src", newSrc);
+      this.video.load();
+      this.video.currentTime = currentTime;
+      this.updatePauseState();
+    } else {
+      console.error("Resolution not found");
     }
   }
   //might need to even toggle z-index of lists for when
@@ -201,7 +231,7 @@ class VideoPlayer extends HTMLElement {
     this.listSecondaryWrapper.classList.add("outOfView");
     this.listTertiaryWrapper.classList.add("outOfView");
     // temporary
-    this.settingsMenu.style.height = "91px";
+    this.settingsMenu.style.height = "86px";
   }
 
   toggleFullScreen() {
@@ -229,6 +259,7 @@ class VideoPlayer extends HTMLElement {
 
   initializeReferences() {
     this.video = this.shadowRoot.querySelector("video");
+    this.source = this.shadowRoot.querySelector("source");
     this.playBtnOverlayIcon = this.shadowRoot.querySelector(
       ".play--btn__wrapper img"
     );
@@ -291,6 +322,16 @@ class VideoPlayer extends HTMLElement {
     this.playbackRateLabel =
       this.shadowRoot.querySelector("#playbackRateLabel");
 
+    this.qualityLabel = this.shadowRoot.querySelector("#qualityLabel");
+
+    this.videoResolutionBtns = this.shadowRoot.querySelectorAll(
+      ".list--tertiary button"
+    );
+
+    this.settingsCloseBtn = this.shadowRoot.querySelector(
+      ".settings-close--btn"
+    );
+
     // video works
     const videoWorks = !!document.createElement("video").canPlayType;
 
@@ -308,13 +349,27 @@ class VideoPlayer extends HTMLElement {
   }
 
   connectedCallback() {
-    this.render();
-    this.initializeReferences();
+    this.loadStyles().then(() => {
+      this.render();
+      this.initializeReferences();
+      setTimeout(() => {
+        // makes sure the elements are selected before calling setupEventListeners
+        this.setupEventListeners();
+      }, 0);
+    });
+  }
 
-    setTimeout(() => {
-      // makes sure the elements are selected before calling setupEventListeners
-      this.setupEventListeners();
-    }, 0);
+  async loadStyles() {
+    try {
+      const response = await fetch("./video-player-styles.css");
+      const cssText = await response.text();
+
+      const styleElement = document.createElement("style");
+      styleElement.textContent = cssText;
+      this.shadowRoot.appendChild(styleElement);
+    } catch (error) {
+      console.error("Failed to load styles:", error);
+    }
   }
 
   setupEventListeners() {
@@ -371,6 +426,10 @@ class VideoPlayer extends HTMLElement {
 
     this.boundToggleShowSettings = () => {
       this.toggleShowSettings();
+    };
+
+    this.boundUpdateResolutionHandler = (e) => {
+      this.updateResolution(e);
     };
 
     window.addEventListener("keydown", (e) => {
@@ -430,10 +489,17 @@ class VideoPlayer extends HTMLElement {
     });
 
     this.settingsBtn.addEventListener("click", this.boundToggleShowSettings);
+    this.settingsCloseBtn.addEventListener(
+      "click",
+      this.boundToggleShowSettings
+    );
+
+    this.videoResolutionBtns.forEach((button) => {
+      button.addEventListener("click", this.boundUpdateResolutionHandler);
+    });
 
     // override default behaviour
     document.addEventListener("fullscreenchange", () => {
-      // console.log(e);
       this.toggleFullScreenBtn();
       if (document.fullscreenElement) {
         this.videoControls.classList.add("fullScreenActive");
@@ -442,7 +508,7 @@ class VideoPlayer extends HTMLElement {
       } else {
         this.videoControls.classList.remove("fullScreenActive");
         this.videoControls.style.height = "15%";
-        this.pauseOverlay.style.height = "87%";
+        this.pauseOverlay.style.height = "86.4%";
       }
     });
   }
@@ -468,449 +534,145 @@ class VideoPlayer extends HTMLElement {
   }
 
   render() {
-    const template = html` <style>
-        .video-player {
-          border: 1px solid grey;
-          width: clamp(600px, 50vw, 1200px);
-          position: relative;
-          aspect-ratio: 16 / 9;
-        }
+    const template = html` <div class="video-player">
+      <div class="play--btn__overlay hidden"></div>
+      <div class="play--btn__wrapper">
+        <img src="./assets/play-btn.svg" class="hidden" />
+      </div>
 
-        .video-player video {
-          width: 100%;
-          height: auto;
-          object-fit: cover;
-        }
-        .hidden {
-          display: none;
-        }
-
-        .bottom-controls--wrapper {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .bottom-controls--left,
-        .bottom-controls--right {
-          display: flex;
-          align-items: center;
-        }
-
-        .volume--btn img {
-          max-width: 50px;
-        }
-
-        .video-progress {
-          position: relative;
-        }
-
-        progress {
-          appearance: none;
-          z-index: -1;
-          opacity: 0;
-          pointer-events: none;
-          position: absolute;
-        }
-
-        .seek {
-          width: 98%;
-          padding-left: 10px;
-          cursor: pointer;
-          height: 8.6px;
-        }
-
-        .seek-tooltip {
-          display: none;
-          position: absolute;
-          top: -30px;
-          left: 15px;
-          margin-left: -20px;
-          font-size: 12px;
-          padding: 3px;
-          content: attr(data-title);
-          font-weight: bold;
-          color: #fff;
-          background-color: rgba(0, 0, 0, 0.6);
-        }
-
-        .time {
-          padding: 0px 20px;
-        }
-
-        .seek:hover + .seek-tooltip {
-          display: block;
-        }
-
-        .volume--controls {
-          display: flex;
-          align-items: center;
-        }
-
-        .video-controls.fullScreenActive {
-          right: 0;
-          left: 0;
-          bottom: 0;
-          padding: 10px;
-          position: absolute;
-          background: white;
-        }
-
-        .video-controls {
-          height: 15%;
-        }
-
-        .settings-btn,
-        .pip-btn,
-        .fullscreen-btn,
-        .playback-btn,
-        .volume--btn,
-        .rewind--btn {
-          cursor: pointer;
-          position: relative;
-          margin-right: 7px;
-          border: none;
-          outline: none;
-          background-color: transparent;
-        }
-
-        .settings-btn img {
-          width: 50px;
-        }
-
-        .volume--btn img {
-          width: 40px;
-        }
-
-        .play,
-        .rewind--btn img {
-          width: 50px;
-        }
-
-        .pause {
-          width: 30px;
-          padding: 10px;
-        }
-
-        .fullscreen,
-        .fullscreen-exit {
-          width: 40px;
-        }
-
-        .pip-btn img {
-          width: 55px;
-        }
-
-        .play--btn__wrapper {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          z-index: 32;
-        }
-
-        .play--btn__wrapper img {
-          width: 150px;
-          z-index: 33;
-        }
-
-        .play--btn__overlay {
-          width: 100%;
-          height: 87%;
-          background-color: black;
-          position: absolute;
-          opacity: 0.5;
-          z-index: 5;
-        }
-
-        .settings--menu {
-          position: absolute;
-          width: 140px;
-          overflow: hidden;
-          height: 88px;
-          border: 1px solid black;
-          background: white;
-          bottom: 100px;
-          right: 20px;
-          transition: all 150ms ease;
-          z-index: 99;
-          opacity: 0;
-        }
-
-        .settings--menu.openMenu {
-          animation: fadeInSlideDown 150ms ease forwards;
-        }
-
-        .list--secondary,
-        .list--main,
-        .list--tertiary {
-          padding-inline-start: 0;
-          list-style: none;
-        }
-
-        .settings--menu__inner {
-          position: relative;
-          height: 88px;
-        }
-
-        .list--main__wrapper,
-        .list--secondary__wrapper,
-        .list--tertiary__wrapper {
-          position: absolute;
-          width: 120px;
-          padding: 10px;
-        }
-        .list--main__wrapper {
-          background: grey;
-        }
-        .list--secondary__wrapper,
-        .list--tertiary__wrapper {
-          margin-left: 140px;
-        }
-
-        .list--secondary__wrapper {
-          background: red;
-          /* display: none; */
-        }
-        .list--tertiary__wrapper {
-          background: orange;
-        }
-
-        .list--btnWrapper {
-          width: 100%;
-          display: flex;
-          justify-content: flex-end;
-          position: absolute;
-          right: 10px;
-          top: 10px;
-        }
-        .list--backBtn {
-          border: none;
-          background: transparent;
-          color: white;
-          font-size: 18px;
-          font-weight: bold;
-        }
-
-        .list--backBtn:hover {
-          color: grey;
-          cursor: pointer;
-        }
-
-        .btn--playbackRate {
-          border: none;
-          font-size: 12px;
-        }
-
-        #playbackRateLabel {
-          font-size: 12px;
-          margin-left: 8px;
-        }
-
-        .list--main__wrapper.outOfView,
-        .list--secondary__wrapper.inView,
-        .list--tertiary__wrapper.inView {
-          animation: slideSettingsLeft 0.25s ease;
-          animation-fill-mode: forwards;
-        }
-
-        .list--main__wrapper.inView,
-        .list--secondary__wrapper.outOfView,
-        .list--tertiary__wrapper.outOfView {
-          animation: slideSettingsRight 0.25s ease;
-          animation-fill-mode: forwards;
-        }
-        .playbackRate--wrapper {
-          display: flex;
-        }
-
-        /* ANIMATIONS */
-
-        @keyframes slideSettingsLeft {
-          from {
-            transform: translateX(0);
-          }
-          to {
-            transform: translateX(-140px);
-          }
-        }
-        @keyframes slideSettingsRight {
-          from {
-            transform: translateX(-140px);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-
-        @keyframes slideSettingsRight {
-          from {
-            transform: translateX(-140px);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-
-        @keyframes fadeInSlideDown {
-          from {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            visibility: visible;
-            pointer-events: all;
-            transform: translateY(0px);
-          }
-        }
-      </style>
-      <div class="video-player">
-        <div class="play--btn__overlay hidden"></div>
-        <div class="play--btn__wrapper">
-          <img src="./assets/play-btn.svg" class="hidden" />
+      <video poster="${this.getAttribute("data-poster")}" preload="metadata">
+        <source src="${this.getAttribute(`data-video-720`)}" type="video/mp4" />
+      </video>
+      <div class="video-controls hidden">
+        <div class="video-progress">
+          <progress class="progress-bar" value="0" min="0" max="100"></progress>
+          <input class="seek" value="0" min="0" type="range" step="1" />
+          <div class="seek-tooltip">00:00</div>
         </div>
-
-        <video poster="${this.getAttribute("data-poster")}" preload="metadata">
-          <source src="${this.getAttribute("data-video")}" type="video/mp4" />
-        </video>
-        <div class="video-controls hidden">
-          <div class="video-progress">
-            <progress
-              class="progress-bar"
-              value="0"
-              min="0"
-              max="100"
-            ></progress>
-            <input class="seek" value="0" min="0" type="range" step="1" />
-            <div class="seek-tooltip">00:00</div>
-          </div>
-          <div class="bottom-controls">
-            <div class="bottom-controls--wrapper">
-              <div class="bottom-controls--left">
-                <!-- Playback buttons -->
-                <div class="playback-btns--wrapper">
-                  <button data-title="Play (k)" class="playback-btn">
-                    <img src="./assets/play-btn.svg" class="play" />
-                    <img src="./assets/pause.png" class="pause hidden" />
-                  </button>
-                </div>
-
-                <!-- Volume controls -->
-                <div class="volume--controls">
-                  <button class="volume--btn">
-                    <img src="./assets/volume-up.svg" class="volume--up" />
-                    <img
-                      src="./assets/volume-low-1.png"
-                      class="volume--low hidden"
-                    />
-                    <img
-                      src="./assets/volume-off.png"
-                      class="volume--muted hidden"
-                    />
-                  </button>
-
-                  <input
-                    class="volume--input"
-                    value="1"
-                    data-mute="0.5"
-                    type="range"
-                    max="1"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-
-                <!-- Time -->
-                <div class="time">
-                  <time class="time-elapsed">00:00</time>
-                  <span> / </span>
-                  <time class="duration">00:00</time>
-                </div>
+        <div class="bottom-controls">
+          <div class="bottom-controls--wrapper">
+            <div class="bottom-controls--left">
+              <!-- Playback buttons -->
+              <div class="playback-btns--wrapper">
+                <button data-title="Play (k)" class="playback-btn">
+                  <img src="./assets/play-btn.svg" class="play" />
+                  <img src="./assets/pause.png" class="pause hidden" />
+                </button>
               </div>
-              <div class="bottom-controls--right">
-                <!-- Settings button -->
-                <div class="settings">
-                  <button data-title="Settings (s)" class="settings-btn">
-                    <img src="./assets/settings.svg" />
-                  </button>
 
-                  <div class="settings--menu">
-                    <div class="settings--menu__inner">
-                      <div class="list--main__wrapper">
-                        <ul class="list--main">
-                          <div class="playbackRate--wrapper">
-                            <button
-                              name="playbackRate--btn"
-                              class="btn--playbackRate"
-                            >
-                              Playback rate
-                            </button>
-                            <label
-                              for="playbackRate--btn"
-                              id="playbackRateLabel"
-                              >Normal</label
-                            >
-                          </div>
-                          <button class="btn--quality">Quality</button>
-                        </ul>
-                      </div>
+              <!-- Volume controls -->
+              <div class="volume--controls">
+                <button class="volume--btn">
+                  <img src="./assets/volume-up.svg" class="volume--up" />
+                  <img
+                    src="./assets/volume-low-1.png"
+                    class="volume--low hidden"
+                  />
+                  <img
+                    src="./assets/volume-off.png"
+                    class="volume--muted hidden"
+                  />
+                </button>
 
-                      <div class="list--secondary__wrapper">
-                        <div class="list--btnWrapper">
-                          <button class="list--backBtn">&lt;</button>
+                <input
+                  class="volume--input"
+                  value="1"
+                  data-mute="0.5"
+                  type="range"
+                  max="1"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div class="time">
+                <time class="time-elapsed">00:00</time>
+                <span> / </span>
+                <time class="duration">00:00</time>
+              </div>
+            </div>
+            <div class="bottom-controls--right">
+              <div class="settings">
+                <button data-title="Settings (s)" class="settings-btn">
+                  <img src="./assets/settings.svg" />
+                </button>
+
+                <div class="settings--menu">
+                  <div class="settings--menu__inner">
+                    <div class="list--main__wrapper">
+                      <button class="settings-close--btn">✖</button>
+                      <ul class="list--main">
+                        <div class="playbackRate--wrapper">
+                          <button
+                            name="playbackRate--btn"
+                            class="btn--playbackRate"
+                          >
+                            Playback rate
+                          </button>
+                          <label for="playbackRate--btn" id="playbackRateLabel"
+                            >Normal</label
+                          >
                         </div>
-
-                        <ul class="list--secondary">
-                          <li><button data-rate="2">2</button></li>
-                          <li><button data-rate="1.75">1.75</button></li>
-                          <li><button data-rate="1.5">1.5</button></li>
-                          <li><button data-rate="1">Normal</button></li>
-                          <li><button data-rate="0.75">0.75</button></li>
-                          <li><button data-rate="0.5">0.5</button></li>
-                        </ul>
-                      </div>
-
-                      <div class="list--tertiary__wrapper">
-                        <div class="list--btnWrapper">
-                          <button class="list--backBtn">&lt;</button>
+                        <div class="quality--wrapper">
+                          <button name="quality-btn" class="btn--quality">
+                            Quality
+                          </button>
+                          <label for="quality-btn" id="qualityLabel"
+                            >720p</label
+                          >
                         </div>
-                        <ul class="list--tertiary">
-                          <li><button>Option 1</button></li>
-                          <li><button>Option 2</button></li>
-                          <li><button>Option 2</button></li>
-                        </ul>
+                      </ul>
+                    </div>
+
+                    <div class="list--secondary__wrapper">
+                      <div class="list--btnWrapper">
+                        <button class="list--backBtn"><</button>
                       </div>
+
+                      <ul class="list--secondary">
+                        <li><button data-rate="2">2</button></li>
+                        <li><button data-rate="1.75">1.75</button></li>
+                        <li><button data-rate="1.5">1.5</button></li>
+                        <li><button data-rate="1">Normal</button></li>
+                        <li><button data-rate="0.75">0.75</button></li>
+                        <li><button data-rate="0.5">0.5</button></li>
+                      </ul>
+                    </div>
+
+                    <div class="list--tertiary__wrapper">
+                      <div class="list--btnWrapper">
+                        <button class="list--backBtn"><</button>
+                      </div>
+                      <ul class="list--tertiary">
+                        <li><button data-res="720">720p</button></li>
+                        <li><button data-res="360">360p</button></li>
+                      </ul>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div class="rewind--btn__wrapper">
-                  <button class="rewind--btn">
-                    <img src="./assets/rewind-10.svg" />
-                  </button>
-                </div>
-                <button data-title="PIP (p)" class="pip-btn">
-                  <img src="./assets/pip.svg" alt="" />
-                </button>
-                <button class="fullscreen-btn" data-title="Fullscreen (f)">
-                  <img
-                    src="./assets/fullscreen.svg"
-                    alt=""
-                    class="fullscreen"
-                  />
-                  <img
-                    src="./assets/fullscreen-exit.svg"
-                    alt=""
-                    class="fullscreen-exit hidden"
-                  />
+              <div class="rewind--btn__wrapper">
+                <button class="rewind--btn">
+                  <img src="./assets/rewind-10.svg" />
                 </button>
               </div>
+              <button data-title="PIP (p)" class="pip-btn">
+                <img src="./assets/pip.svg" alt="" />
+              </button>
+              <button class="fullscreen-btn" data-title="Fullscreen (f)">
+                <img src="./assets/fullscreen.svg" alt="" class="fullscreen" />
+                <img
+                  src="./assets/fullscreen-exit.svg"
+                  alt=""
+                  class="fullscreen-exit hidden"
+                />
+              </button>
             </div>
           </div>
         </div>
-      </div>`;
+      </div>
+    </div>`;
 
     render(template, this.shadowRoot);
   }
